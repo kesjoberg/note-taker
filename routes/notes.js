@@ -1,21 +1,61 @@
 const fs = require('fs');
-const util = require('util');
-const { getNotes } = require('../db/dbFunctions');
+const { v4: uuidv4 } = require('uuid');
+
 const db = require('express').Router();
+const util = require('util');
 
-const notes = require('../db/dbFunctions');
 
-
-// GET Route for retrieving diagnostic information
 db.get('/notes', (req, res) => {
-  notes.getNotes().then( (dbNotes) =>{return res.json(dbNotes)}) 
+  util.promisify(fs.readFile)('./db/db.json').then((data) => res.json(JSON.parse(data)));
+
 });
-  
 
-
-// POST Route for a error logging
 db.post('/notes', (req, res) => {
-  notes.addNote().then( (dbNotes) => {return res.json(dbNotes)})
+  
+  console.info(`${req.method} request received to add a note`);
+  const { title, text } = req.body;
+  if (title && text) {
+    const newNote = {
+      title,
+      text,
+      note_id: uuidv4(),
+    };
+
+    // Convert the data to a string so we can save it
+    fs.readFile('./db/db.json', 'utf8', (err, data) => {
+      if (err) {
+        console.error(err);
+      } else {
+        const allTheNotes = JSON.parse(data) || [];
+        console.log('----------', allTheNotes);
+
+        allTheNotes.push(newNote);
+      
+      // Write the note to file
+      fs.writeFile('./db/db.json', 
+      JSON.stringify(allTheNotes, null, 4),
+      (err) =>
+
+        err
+          ? console.error(err)
+          : console.log(
+              `Review for ${newNote.title} has been written to JSON file`
+            )
+      );
+    }
+  });
+    const response = {
+      status: 'success',
+      body: newNote,
+    };
+
+    console.log(response);
+    res.status(201).json(response);
+  } else {
+    res.status(500).json('Error in posting review');
+  }
 });
+
+
 
 module.exports = db;
