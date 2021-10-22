@@ -1,18 +1,26 @@
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-
-const db = require('express').Router();
 const util = require('util');
 
+const { v4: uuidv4 } = require('uuid');
+const db = require('express').Router();
 
 db.get('/notes', (req, res) => {
   util.promisify(fs.readFile)('./db/db.json').then((data) => res.json(JSON.parse(data)));
+});
 
+db.get('/notes/:note_id', (req, res) => {
+  const noteId = req.params.note_id
+  util.promisify(fs.readFile)('./db/db.json').then((data) => JSON.parse(data))
+  .then((json) => {
+    const result = json.filter((note) => note.note_id == noteId);
+    return result.length > 0
+    ? res.json(result)
+    : res.json('No note with that ID');
+  });
 });
 
 db.post('/notes', (req, res) => {
-  
-  console.info(`${req.method} request received to add a note`);
+ console.info(`${req.method} request received to add a note`);
   const { title, text } = req.body;
   if (title && text) {
     const newNote = {
@@ -40,22 +48,19 @@ db.post('/notes', (req, res) => {
           ? console.error(err)
           : console.log(
               `Review for ${newNote.title} has been written to JSON file`
-            )
+         )
       );
     }
   });
-    const response = {
-      status: 'success',
-      body: newNote,
-    };
-
-    console.log(response);
+  const response = {
+    status: 'success',
+    body: newNote,
+  };
+  console.log(response);
     res.status(201).json(response);
   } else {
     res.status(500).json('Error in posting review');
   }
 });
-
-
 
 module.exports = db;
